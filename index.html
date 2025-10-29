@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Generador de QR</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- qrcode.js para generar QR en el navegador -->
+    <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            background-color: #f0f4f8; /* Un color de fondo suave */
+        }
+        /* Estilos adicionales para mejorar la apariencia del QR */
+        #qrcode-container img {
+            border-radius: 0.5rem; /* Bordes redondeados para la imagen del QR */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-gray-100 min-h-screen flex items-center justify-center">
+        <div class="bg-white p-8 rounded-xl shadow-lg max-w-md w-full border border-gray-200">
+            <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Generador de Código QR Personal</h1>
+
+            <div class="mb-6">
+                <label for="qrInput" class="block text-gray-700 text-sm font-semibold mb-2">
+                    Introduce el texto o URL para tu QR:
+                </label>
+                <input
+                    type="text"
+                    id="qrInput"
+                    class="shadow-sm appearance-none border border-gray-300 rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 ease-in-out"
+                    placeholder="Ej: https://mi-sitio.com o ¡Hola Mundo!">
+            </div>
+
+            <button
+                id="generateQrBtn"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-200 ease-in-out transform hover:scale-105 shadow-md"
+                >
+                Generar Código QR
+            </button>
+
+            <div id="qrcode-container" class="mt-8 flex justify-center items-center p-4 border border-dashed border-gray-300 rounded-lg min-h-[200px] bg-gray-50">
+                <p class="text-gray-500 text-center">Tu código QR aparecerá aquí.</p>
+            </div>
+
+            <button
+                id="downloadQrBtn"
+                class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition duration-200 ease-in-out transform hover:scale-105 shadow-md mt-4 hidden"
+            >
+                Descargar Código QR
+            </button>
+
+            <div id="messageBox" class="mt-4 p-3 text-sm text-center rounded-lg hidden" role="alert"></div>
+        </div>
+    </div>
+
+    <script>
+        const qrInput = document.getElementById('qrInput');
+        const generateQrBtn = document.getElementById('generateQrBtn');
+        const qrcodeContainer = document.getElementById('qrcode-container');
+        const downloadQrBtn = document.getElementById('downloadQrBtn');
+        const messageBox = document.getElementById('messageBox');
+        let currentQrCode = null; // Para almacenar la instancia del QR
+
+        /**
+         * Muestra un mensaje al usuario en un cuadro de alerta.
+         * @param {string} message - El mensaje a mostrar.
+         * @param {string} type - El tipo de mensaje ('success', 'error', 'info').
+         */
+        function showMessage(message, type) {
+            messageBox.textContent = message;
+            messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800', 'bg-blue-100', 'text-blue-800');
+            if (type === 'success') {
+                messageBox.classList.add('bg-green-100', 'text-green-800');
+            } else if (type === 'error') {
+                messageBox.classList.add('bg-red-100', 'text-red-800');
+            } else {
+                messageBox.classList.add('bg-blue-100', 'text-blue-800');
+            }
+            messageBox.classList.remove('hidden');
+        }
+
+        generateQrBtn.addEventListener('click', () => {
+            const data = qrInput.value.trim();
+
+            if (!data) {
+                showMessage('Por favor, introduce texto o una URL para generar el QR.', 'error');
+                qrcodeContainer.innerHTML = '<p class="text-gray-500 text-center">Tu código QR aparecerá aquí.</p>';
+                downloadQrBtn.classList.add('hidden');
+                return;
+            }
+
+            // Limpiar contenedor antes de generar un nuevo QR
+            qrcodeContainer.innerHTML = '';
+            messageBox.classList.add('hidden'); // Ocultar mensajes anteriores
+
+            try {
+                // Crear una nueva instancia de QRCode
+                currentQrCode = new QRCode(qrcodeContainer, {
+                    text: data,
+                    width: 200,
+                    height: 200,
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H // Nivel de corrección de errores (H = High)
+                });
+                showMessage('Código QR generado exitosamente. ¡Puedes escanearlo!', 'success');
+                downloadQrBtn.classList.remove('hidden'); // Mostrar botón de descarga
+            } catch (error) {
+                showMessage('Ocurrió un error al generar el código QR.', 'error');
+                console.error("Error al generar QR:", error);
+                qrcodeContainer.innerHTML = '<p class="text-gray-500 text-center">Tu código QR aparecerá aquí.</p>';
+                downloadQrBtn.classList.add('hidden');
+            }
+        });
+
+        downloadQrBtn.addEventListener('click', () => {
+            if (!currentQrCode) {
+                showMessage('No hay un código QR para descargar.', 'error');
+                return;
+            }
+
+            // qrcode.js crea un elemento <img> o <canvas> dentro del contenedor
+            const qrCanvas = qrcodeContainer.querySelector('canvas');
+            const qrImage = qrcodeContainer.querySelector('img');
+
+            let imageDataUrl;
+            if (qrCanvas) {
+                // Si es un canvas, obtener la URL de datos
+                imageDataUrl = qrCanvas.toDataURL("image/png");
+            } else if (qrImage) {
+                // Si es una imagen, usar su src (que qrcode.js puede generar como data URL)
+                imageDataUrl = qrImage.src;
+            }
+
+            if (imageDataUrl) {
+                const link = document.createElement('a');
+                link.href = imageDataUrl;
+                link.download = 'codigo_qr.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showMessage('Código QR descargado.', 'success');
+            } else {
+                showMessage('No se pudo obtener la imagen del QR para descargar.', 'error');
+            }
+        });
+
+        // Adaptar el tamaño del contenedor del QR para pantallas pequeñas
+        window.addEventListener('resize', () => {
+            const containerWidth = qrcodeContainer.offsetWidth;
+            const size = Math.min(200, containerWidth - 40); // Asegurar que no exceda 200px y tenga padding
+            if (currentQrCode) {
+                // No se puede redimensionar un QR ya generado con qrcode.js sin regenerar
+                // Una solución más robusta sería regenerar el QR o usar un SVG que escala mejor.
+                // Para esta demostración, la imagen se adaptará al contenedor si se usa `object-fit`.
+                // Como qrcode.js crea un elemento img o canvas con dimensiones fijas,
+                // la adaptabilidad se lograría más con CSS si el QR fuera un SVG o con regeneración.
+                // Aquí, la imagen ya tiene un tamaño fijo de 200x200.
+            }
+        });
+
+    </script>
+</body>
+</html>
